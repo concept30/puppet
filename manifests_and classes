@@ -1,0 +1,76 @@
+quest begin manifests_and_classes
+ssh learning@cowsay.puppet.vm
+vim /tmp/hello.pp
+notify { 'Hello Puppet!': }
+sudo puppet apply /tmp/hello.pp 
+exit
+
+puppet config print modulepath
+
+cd /etc/puppetlabs/code/environments/production/modules
+mkdir -p cowsay/manifests
+vim cowsay/manifests/init.pp
+
+class cowsay {
+  package { 'cowsay':
+    ensure   => present,
+    provider => 'gem',
+  }
+}
+
+puppet parser validate cowsay/manifests/init.pp
+
+vim /etc/puppetlabs/code/environments/production/manifests/site.pp
+
+node 'cowsay.puppet.vm' {
+  include cowsay
+}
+
+ssh learning@cowsay.puppet.vm
+Practice puppet run --noop
+sudo puppet agent -t --noop
+
+sudo puppet agent -t
+
+cowsay Puppet is awesome!
+exit
+
+vim cowsay/manifests/fortune.pp
+
+class cowsay::fortune {
+  package { 'fortune-mod':
+    ensure => present,
+  }
+}
+
+The two colons that connect cowsay and fortune are 
+pronounced "scope scope" and indicate that this fortune class 
+is contained in the cowsay module scope. Notice how the 
+fully scoped name of the class tells Puppet exactly where to find
+ it in your module path: the fortune.pp manifest in the cowsay
+ module's manifests directory. This naming pattern also helps
+ avoid conflicts among similarly named classes provided by
+ different modules.
+
+ puppet parser validate cowsay/manifests/fortune.pp
+
+ vim cowsay/manifests/init.pp
+
+ class cowsay {
+  package { 'cowsay':
+    ensure   => present,
+    provider => 'gem',
+  }
+  include cowsay::fortune
+}
+
+ puppet parser validate cowsay/manifests/init.pp
+
+ ssh learning@cowsay.puppet.vm
+
+ sudo puppet agent -t --noop
+ sudo puppet agent -t
+
+ fortune | cowsay
+
+ exit
