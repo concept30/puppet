@@ -1,0 +1,9 @@
+Hello_Bolt
+rpm -Uvh https://yum.puppet.com/puppet6/puppet6-release-el-7.noarch.rpm
+yum install puppet-bolt
+bolt --help
+bolt --version
+bolt command run 'free -th' --nodes localhost
+bolt command run hostname --nodes docker://bolt.puppet.vm
+bolt command run 'cat /etc/hosts' --nodes docker://bolt.puppet.vm
+bolt --format json command run 'cat /etc/hosts' --nodes docker://bolt.puppet.vm

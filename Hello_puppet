@@ -1,0 +1,13 @@
+Hello_puppet
+bolt command run "sh -c 'curl -k https://learning.puppetlabs.vm:8140/packages/current/install.bash | sudo bash'" --nodes docker://hello.puppet.vm
+ssh learning@hello.puppet.vm
+sudo puppet resource file /tmp/test
+
+file { '/tmp/test':
+  ensure => 'absent',
+}
+
+type { 'title':
+  parameter => 'value',
+}
+
