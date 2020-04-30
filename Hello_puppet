@@ -1,6 +1,8 @@
 Hello_puppet
 bolt command run "sh -c 'curl -k https://learning.puppetlabs.vm:8140/packages/current/install.bash | sudo bash'" --nodes docker://hello.puppet.vm
+
 ssh learning@hello.puppet.vm
+
 sudo puppet resource file /tmp/test
 
 file { '/tmp/test':
@@ -10,4 +12,29 @@ file { '/tmp/test':
 type { 'title':
   parameter => 'value',
 }
+
+file { '/tmp/test':
+  ensure  => 'file',
+  content => '{md5}d41d8cd98f00b204e9800998ecf8427e',
+  ...
+}
+
+sudo puppet resource file /tmp/test content='Hello Puppet!'
+cat /tmp/test
+
+sudo puppet resource package httpd
+package { 'httpd':
+  ensure => 'purged',
+}
+
+sudo puppet resource package bogus-package ensure=present
+sudo puppet resource package bogus-package ensure=present provider=gem
+
+sudo puppet resource package httpd ensure=present
+package { 'httpd':
+  ensure => '2.4.6-45.el7.centos',
+}
+
+exit
+
 

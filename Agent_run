@@ -1,0 +1,23 @@
+ssh learning@agent.puppet.vm
+sudo puppet agent -t
+exit
+puppetserver ca list
+puppetserver ca sign --certname agent.puppet.vm
+ssh learning@agent.puppet.vm
+sudo puppet agent -t
+exit
+
+vim /etc/puppetlabs/code/environments/production/manifests/site.pp
+
+node 'agent.puppet.vm' {
+  notify { 'Hello Puppet!': }
+}
+
+if you prefer to paste content into Vim, 
+you can hit ESC to enter command mode 
+and type :set paste to disable the automatic formatting. 
+Press i to return to insert mode before pasting your text.
+
+ssh learning@agent.puppet.vm
+sudo puppet agent -t
+exit
