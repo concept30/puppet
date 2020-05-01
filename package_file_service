@@ -1,0 +1,146 @@
+Puppet master's modules directory.
+cd /etc/puppetlabs/code/environments/production/modules
+mkdir -p pasture/{manifests,files}
+vim pasture/manifests/init.pp
+
+class pasture {
+  package { 'pasture':
+    ensure   => present,
+    provider => gem,
+  }
+}
+
+puppet parser validate pasture/manifests/init.pp
+
+vim /etc/puppetlabs/code/environments/production/manifests/site.pp
+
+node 'pasture.puppet.vm' {
+  include pasture
+}
+
+ssh learning@pasture.puppet.vm 
+sudo puppet agent -t
+pasture start &
+curl 'localhost:4567/api/v1/cowsay?message=Hello!'
+curl 'localhost:4567/api/v1/cowsay?message=Hello!&character=elephant'
+fg
+cntrl-c
+exit
+
+vim pasture/files/pasture_config.yaml
+
+---
+:default_character: elephant
+
+vim pasture/manifests/init.pp
+
+And add a file resource declaration.
+
+class pasture {
+
+  package { 'pasture':
+    ensure   => present,
+    provider => 'gem',
+  }
+
+  file { '/etc/pasture_config.yaml':
+    source => 'puppet:///modules/pasture/pasture_config.yaml',
+  }
+}
+
+puppet parser validate pasture/manifests/init.pp
+
+First, create a file called pasture.service.
+vim pasture/files/pasture.service
+
+[Unit]
+Description=Run the pasture service
+
+[Service]
+Environment=RACK_ENV=production
+ExecStart=/usr/local/bin/pasture start
+
+[Install]
+WantedBy=multi-user.target
+
+vim pasture/manifests/init.pp
+First, add a file resource to manage your service unit file.
+
+class pasture {
+
+  package { 'pasture':
+    ensure   => present,
+    provider => 'gem',
+  }
+
+  file { '/etc/pasture_config.yaml':
+    source => 'puppet:///modules/pasture/pasture_config.yaml',
+  }
+
+  file { '/etc/systemd/system/pasture.service':
+    source => 'puppet:///modules/pasture/pasture.service',
+  }
+
+}
+
+Next, add the service resource itself. This resource will have the
+title pasture and a single parameter  to set the state of the
+service to running.
+
+class pasture {
+
+  package { 'pasture':
+    ensure   => present,
+    provider => 'gem',
+  }
+
+  file { '/etc/pasture_config.yaml':
+    source => 'puppet:///modules/pasture/pasture_config.yaml',
+  }
+
+  file { '/etc/systemd/system/pasture.service':
+    source => 'puppet:///modules/pasture/pasture.service',
+  }
+
+  service { 'pasture':
+    ensure => running,
+  }
+
+}
+
+vim pasture/manifests/init.pp
+
+class pasture {
+
+  package { 'pasture':
+    ensure   => present,
+    provider => 'gem',
+    before   => File['/etc/pasture_config.yaml'],
+  }
+
+  file { '/etc/pasture_config.yaml':
+    source  => 'puppet:///modules/pasture/pasture_config.yaml',
+    notify  => Service['pasture'],
+  }
+
+  file { '/etc/systemd/system/pasture.service':
+    source  => 'puppet:///modules/pasture/pasture.service',
+    notify  => Service['pasture'],
+  }
+
+  service { 'pasture':
+    ensure => running,
+  }
+
+}
+
+puppet parser validate pasture/manifests/init.pp
+
+ssh learning@pasture.puppet.vm
+sudo puppet agent -t
+exit
+
+curl 'pasture.puppet.vm:4567/api/v1/cowsay?message=Hello!'
+
+
+
