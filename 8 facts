@@ -1,0 +1,67 @@
+quest begin facts
+
+ssh learning@pasture.puppet.vm
+facter -p | less
+q
+facter -p os
+You can drill down into this structure by using dots (.)
+to specify the key at each child level of the hash, for example:
+
+facter -p os.family
+exit
+
+From your modules directory, create the directory structure 
+for a module called motd. You'll need two subdirectories called
+ manifests and templates.
+
+mkdir -p motd/{manifests,templates}
+
+vim motd/manifests/init.pp
+
+class motd {
+
+  $motd_hash = {
+    'fqdn'       => $facts['networking']['fqdn'],
+    'os_family'  => $facts['os']['family'],
+    'os_name'    => $facts['os']['name'],
+    'os_release' => $facts['os']['release']['full'],
+  }
+
+  file { '/etc/motd':
+    content => epp('motd/motd.epp', $motd_hash),
+  }
+
+}
+
+vim motd/templates/motd.epp
+
+<%- | $fqdn,
+      $os_family,
+      $os_name,
+      $os_release,
+| -%>
+
+<%- | $fqdn,
+      $os_family,
+      $os_name,
+      $os_release,
+| -%>
+Welcome to <%= $fqdn %>
+
+This is a <%= $os_family %> system running <%= $os_name %> <%= $os_release %>
+
+vim /etc/puppetlabs/code/environments/production/manifests/site.
+
+We're not using any parameters, so we'll use the include function to add the motd class to the pasture.puppet.vm node definition.
+
+node 'pasture.puppet.vm' {
+  include motd
+  class { 'pasture':
+    default_character => 'cow',
+  }
+}
+
+ssh learning@pasture.puppet.vm
+sudo puppet agent -t
+
+
