@@ -1,0 +1,86 @@
+cd /etc/puppetlabs/code/environments/production
+
+vim hiera.yaml
+
+---
+version: 5
+
+defaults:
+  datadir: data
+  data_hash: yaml_data
+
+hierarchy:
+  - name: "Per-node data"
+    path: "nodes/%{trusted.certname}.yaml"
+
+  - name: "Per-domain data"
+    path: "domain/%{facts.networking.domain}.yaml" 
+
+  - name: "Common data"
+    path: "common.yaml"
+
+    parse yaml file, equal to puppet parser
+    ruby -e "require 'yaml';require 'pp';pp YAML.load_file('./hiera.yaml')"
+
+vim modules/profile/manifests/pasture/app.pp
+
+class profile::pasture::app {
+  class { 'pasture':
+    default_message   => lookup('profile::pasture::app::default_message'),
+    sinatra_server    => lookup('profile::pasture::app::sinatra_server'),
+    default_character => lookup('profile::pasture::app::default_character'),
+    db                => lookup('profile::pasture::app::db'),
+  }
+}
+
+mkdir -p data/{domain,nodes}
+
+vim data/common.yaml
+
+---
+profile::pasture::app::default_message: "Baa"
+profile::pasture::app::sinatra_server: "thin"
+profile::pasture::app::default_character: "sheep"
+profile::pasture::app::db: "none"
+
+vim data/domain/beauvine.vm.yaml
+
+---
+profile::pasture::app::default_message: "Welcome to Beauvine!"
+
+vim data/domain/auroch.vm.yaml
+
+---
+profile::pasture::app::default_message: "Welcome to Auroch!"
+profile::pasture::app::db: "postgres://pasture:m00m00@pasture-db.auroch.vm/pasture"
+
+vim data/nodes/pasture-app-dragon.auroch.vm.yaml
+
+---
+profile::pasture::app::default_character: 'dragon'
+
+[/etc/puppetlabs/code/environments/production]
+root@learning: # tree data
+data
+├── common.yaml
+├── domain
+│   ├── auroch.vm.yaml
+│   └── beauvine.vm.yaml
+└── nodes
+    └── pasture-app-dragon.auroch.vm.yaml
+
+2 directories, 4 files
+
+puppet job run --nodes pasture-db.auroch.vm,pasture-app-dragon.auroch.vm,pasture-app.auroch.vm,pasture-app.beauvine.vm --concurrency 2
+
+curl pasture-app-dragon.auroch.vm/api/v1/cowsay/sayings
+
+curl -X POST 'pasture-app-dragon.auroch.vm/api/v1/cowsay/sayings?message=Hello!'
+
+curl pasture-app-dragon.auroch.vm/api/v1/cowsay/sayings/1
+
+curl pasture-app.auroch.vm/api/v1/cowsay/sayings/1
+
+curl pasture-app.beauvine.vm/api/v1/cowsay
+
+

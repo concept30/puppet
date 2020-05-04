@@ -1,0 +1,119 @@
+The syntax to create a defined resource type is very similar
+ to the syntax you would use to define a class. Rather than
+  using the class keyword, however, you use define to begin 
+  the code block.
+
+define defined_type_name (
+  parameter_one = default_value,
+  parameter_two = default_value,
+){
+  ...
+}
+
+Once it's defined, you can use a defined resource type by declaring
+ it like you would any other resource type.
+
+defined_type_name { 'title':
+  parameter_one => 'foo',
+  parameter_two => 'bar',
+}
+
+cd /etc/puppetlabs/code/environments/production/modules
+mkdir -p user_accounts/manifests
+
+vim user_accounts/manifests/ssh_user.pp
+
+define user_accounts::ssh_user (
+  $pub_key,
+  $group   = undef,
+  $shell   = undef,
+  $comment = undef,
+){
+  ssh_authorized_key { "${title}@puppet.vm":
+    ensure => present,
+    user   => $title,
+    type   => 'ssh-rsa',
+    key    => $pub_key,
+  }
+  file { "/home/${title}/.ssh":
+    ensure => directory,
+    owner  => $title,
+    group  => $title,
+    mode   => '0700',
+    before => Ssh_authorized_key["${title}@puppet.vm"],
+  }
+  user { $title:
+    ensure  => present,
+    groups  => $group,
+    shell   => $shell,
+    home    => "/home/${title}",
+    comment => $comment,
+  }
+  file { "/home/${title}":
+    ensure => directory,
+    owner  => $title,
+    group  => $title,
+    mode   => '0755',
+  }
+}
+
+
+cat ~/.ssh/id_rsa.pub >> data/domain/beauvine.vm.yaml
+
+vim data/domain/beauvine.vm.yaml
+
+---
+profile::pasture::app::default_message: "Welcome to Beauvine!"
+profile::base::dev_users::users:
+  - title: 'bessie'
+    comment: 'Bessie Johnson'
+    pub_key: 'AAAAB3NzaC1yc2EAAAADAQABAAABAQCVWbkvtB4G/x9eEHXUkFfQgJuxBNJ3MCJ
+3BWbYHb+Ksmd2I92G9wSVFWRDvLzciOsWkbjfSWHrql+82lgplyxBHZZYlf0eK3ytkSL5hvQtOmLW
+MDcWNbHnt7qZFA0j6/h43SG0POmkG1iHSHnlwvbcpJoYZZpKz5+Iq7P9JmOv7zf8UsJtQccWHxAHc
+J+xJ6xZJ2EBziWUCMPxLnD3zNQaW0r/B3pRMT+7F1gDHJ8HuNVklcQGCpVS+WrfpNMJ5+L25Aw/H2
+Bg33o+0esH5FL8M8IR3Xkgp80NAQqmyVi7cx+c9n4RjEdMGk3XtutPNsSLcgm8/YZqv/yTRH6wAQl
+/'
+  - title: 'gertie'
+    comment: 'Gertie Philips'
+    pub_key: 'AAAAB3NzaC1yc2EAAAADAQABAAABAQCVWbkvtB4G/x9eEHXUkFfQgJuxBNJ3MCJ
+3BWbYHb+Ksmd2I92G9wSVFWRDvLzciOsWkbjfSWHrql+82lgplyxBHZZYlf0eK3ytkSL5hvQtOmLW
+MDcWNbHnt7qZFA0j6/h43SG0POmkG1iHSHnlwvbcpJoYZZpKz5+Iq7P9JmOv7zf8UsJtQccWHxAHc
+J+xJ6xZJ2EBziWUCMPxLnD3zNQaW0r/B3pRMT+7F1gDHJ8HuNVklcQGCpVS+WrfpNMJ5+L25Aw/H2
+Bg33o+0esH5FL8M8IR3Xkgp80NAQqmyVi7cx+c9n4RjEdMGk3XtutPNsSLcgm8/YZqv/yTRH6wAQl
+/'
+
+ruby -e "require 'yaml';require 'pp';pp YAML.load_file('./data/domain/beauvine.vm.yaml')"
+
+vim data/common.yaml
+
+---
+profile::pasture::app::default_message: "Baa"
+profile::pasture::app::sinatra_server: "thin"
+profile::pasture::app::default_character: "sheep"
+profile::pasture::app::db: "none"
+profile::base::dev_users::users: []
+
+vim /etc/puppetlabs/code/environments/production/modules/profile/manifests/base/dev_users.pp
+
+class profile::base::dev_users {
+  lookup(profile::base::dev_users::users).each |$user| {
+    user_accounts::ssh_user { $user['title']:
+        comment => $user['comment'],
+        pub_key => $user['pub_key'],
+    }
+  }
+}
+
+vim /etc/puppetlabs/code/environments/production/modules/role/manifests/pasture_app.pp
+
+class role::pasture_app {
+  include profile::pasture::app
+  include profile::base::dev_users
+  include profile::base::motd
+}
+
+puppet job run --nodes pasture-app.beauvine.vm
+
+ssh gertie@pasture-app.beauvine.vm
+
+exit

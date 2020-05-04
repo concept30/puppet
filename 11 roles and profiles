@@ -1,0 +1,77 @@
+mkdir -p profile/manifests
+mkdir profile/manifests/pasture
+vim profile/manifests/pasture/app.pp
+
+class profile::pasture::app {
+  if $facts['fqdn'] =~ 'large' {
+    $default_character = 'elephant'
+    $db                = 'postgres://pasture:m00m00@pasture-db.puppet.vm/pasture'
+  } elsif $facts['fqdn'] =~ 'small' {
+    $default_character = 'cow'
+    $db                = 'none'
+  } else {
+    fail("The ${facts['fqdn']} node name must match 'large' or 'small'.")
+  }
+  class { 'pasture':
+    default_message   => 'Hello Puppet!',
+    sinatra_server    => 'thin',
+    default_character => $default_character,
+    db                => $db,
+  }
+}
+
+vim profile/manifests/pasture/db.pp
+
+class profile::pasture::db {
+  include pasture::db
+}
+
+mkdir profile/manifests/base
+vim profile/manifests/base/motd.pp
+
+class profile::base::motd {
+  include motd
+}
+
+mkdir -p role/manifests
+vim role/manifests/pasture_app.pp
+
+class role::pasture_app {
+  include profile::pasture::app
+  include profile::base::motd
+}
+
+vim role/manifests/pasture_db.pp
+
+class role::pasture_db {
+  include profile::pasture::db
+  include profile::base::motd
+}
+
+vim /etc/puppetlabs/code/environments/production/manifests/site.pp
+
+node default {
+  # This is where you can declare classes for all nodes.
+  # Example:
+  #   class { 'my_class': }
+}
+
+node /^pasture-app/ {
+  include role::pasture_app
+}
+
+node /^pasture-db/ {
+  include role::pasture_db
+}
+
+puppet job run --nodes pasture-db.puppet.vm
+
+puppet job run --nodes pasture-app-small.puppet.vm,pasture-app-large.puppet.vm
+
+curl 'pasture-app-small.puppet.vm/api/v1/cowsay?message="hello"'
+curl 'pasture-app-large.puppet.vm/api/v1/cowsay?message="HELLO!"'
+curl 'pasture-app-small.puppet.vm/api/v1/cowsay/sayings'
+
+
+
+
