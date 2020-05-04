@@ -1,0 +1,6 @@
+git status
+git checkout production
+git pull upstream production
+git checkout -b puppetfile
+
+
