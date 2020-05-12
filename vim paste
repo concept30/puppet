@@ -6,3 +6,5 @@ shift-insert
 esc
 :set no paste
 press i
+
+test vscode upload
