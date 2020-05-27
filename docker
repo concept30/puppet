@@ -18,3 +18,15 @@ sudo mv docker-compose /usr/local/bin && sudo chmod +x /usr/local/bin/docker-com
 sudo dnf install python3-pip
 pip3.6 install docker-compose --user
 sudo docker run --rm --name=linuxconfig-test -p 80:80 httpd
+
+
+Docker commands
+pull a docker image from the docker hub
+docker pull <image-name:tag>
+to run docker image
+docker run <image-name:tag> or docker run <image-id>
+list images on system
+docker images
+list running containers
+docker ps
+list all containersdocker ps -a
