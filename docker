@@ -29,4 +29,5 @@ list images on system
 docker images
 list running containers
 docker ps
-list all containersdocker ps -a
+list all containers
+docker ps -a
