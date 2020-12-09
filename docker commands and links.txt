@@ -1,1 +1,5 @@
 docker commands and links
+https://docs.docker.com/config/containers/container-networking/
+https://forums.docker.com/t/how-to-access-docker-container-from-another-machine-on-local-network/4737/9
+https://www.youtube.com/watch?v=mPEM557bMR4
+https://hub.docker.com/_/httpd
