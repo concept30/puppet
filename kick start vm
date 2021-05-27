@@ -1,1 +1,141 @@
+#platform=x86, AMD64, or Intel EM64T
+#version=DEVEL
+# Firewall configuration
+firewall --enabled --ssh --service=ssh
+# Install OS instead of upgrade
+install
+# Use remote server installation method
+url --url http://artifactory/artifactory/centos/7/os/x86_64/
+
+# Do text based install
+text
+
+rootpw  --iscrypted $6$wPi8NYRipEJVZ3UB$UuRDUF2171EHyOkjEn1L5/nwkig1eU5n4XRw0uIH5Dm/Q.TJsuH8C/WS719fxxbETFNYUKOXbgjZvlesznNoK0
+authconfig --enableshadow --passalgo=sha512
+
+# System keyboard
+keyboard us
+# System language
+lang en_US.UTF-8
+# SELinux configuration
+# RHEL-07-020210
+# RHEL-07-020220
+selinux --permissive
+# Do not configure the X Window System
+skipx
+# Installation logging level
+logging --level=info
+
+# Reboot after installation
+reboot
+
+# System timezone
+timezone --utc America/New_York
+# Network information
+network --onboot yes --device ens192 --bootproto dhcp --noipv6
+# System bootloader configuration
+# RHEL-07-010481
+# RHEL-07-010491
+bootloader --location=mbr --driveorder=sda --append="elevator=noop crashkernel=auto boot=/dev/sda2" --iscrypted --password=grub.pbkdf2.sha512.10000.B1EB2A11875F9E27526437312BA4C603A610228E983DAD590E42962CA0E1C6A07D87305CB4F79C1BB8542922630DD731F9692723DC8F7BEF6FCC3C705C62C5D1.EB24A52271541CB59BB5146A4BC3853AE9CB75A156F581EFA42677DBF5AACC11B2DE0A810E81BD756B6461025D231C22CB6389F51073FCCED4E2E641D2ABFF9E
+
+# Partition clearing information
+zerombr
+clearpart --all  --drives=sda --initlabel
+
+# Disk partitioning information
+part /boot/efi --fstype=efi --size=200
+part /boot     --fstype=xfs --size=1024  --asprimary
+part pv.01                  --size=10240 --grow
+volgroup vg_os --pesize=4096 pv.01
+logvol /              --fstype=xfs --mkfsoptions="-n ftype=1" --name=lv_root  --vgname=vg_os --grow --size=5120 --maxsize=19456
+# RHEL-07-021000
+# RHEL-07-021310
+logvol /home          --fstype=xfs --mkfsoptions="-n ftype=1" --name=lv_home  --vgname=vg_os --grow --size=1024 --maxsize=1024 --fsoptions="nodev,nosuid"
+# RHEL-07-021340
+logvol /tmp           --fstype=xfs --mkfsoptions="-n ftype=1" --name=lv_tmp   --vgname=vg_os --grow --size=1024 --maxsize=1024
+# RHEL-07-021320
+logvol /var           --fstype=xfs --mkfsoptions="-n ftype=1" --name=lv_var   --vgname=vg_os --grow --size=1024 --maxsize=3072
+logvol /var/log       --fstype=xfs --mkfsoptions="-n ftype=1" --name=lv_log   --vgname=vg_os --grow --size=1024 --maxsize=2048
+# RHEL-07-021330
+logvol /var/log/audit --fstype=xfs --mkfsoptions="-n ftype=1" --name=lv_audit --vgname=vg_os --grow --size=1024 --maxsize=1024
+logvol swap           --fstype=swap                           --name=lv_swap  --vgname=vg_os        --size=4096
+
+repo --name=CentOS-Base    --baseurl=http://artifactory/artifactory/centos/7/os/x86_64/
+repo --name=CentOS-Updates --baseurl=http://artifactory/artifactory/centos/7/updates/x86_64/
+repo --name=CentOS-Extras  --baseurl=http://artifactory/artifactory/centos/7/extras/x86_64/
+repo --name=puppet         --baseurl=http://artifactory/artifactory/puppet/puppet/el/7/x86_64/
+repo --name=epel           --baseurl=http://artifactory/artifactory/epel/7/x86_64/
+
+%packages
+@base
+@core
+@directory-client
+@smart-card # RHEL-07-041001
+-abrt*
+-aic94xx-firmware
+-bind
+-ivtv-*
+-iwl*firmware
+-wpa_supplicant
+authconfig-gtk # RHEL-07-041001
+cifs-utils
+dracut-fips
+htop
+iptables-services
+nfs-utils
+oddjob
+open-vm-tools
+opensc # RHEL-07-041003, RHEL-07-041004
+puppet-agent
+python-dns
+python-requests
+rsyslog-gnutls
+samba-common
+samba-common-tools
+screen # RHEL-07-010090
+setools-console
+setroubleshoot
+sssd
+sssd-client
+sssd-tools
+tmux
+yum-plugin-versionlock
+%end
+
+%post --log=/root/ks-post.log
+
+# RHEL-07-021022
+# RHEL-07-021023
+# RHEL-07-021024
+/opt/puppetlabs/bin/puppet resource mount /dev/shm ensure=mounted fstype=tmpfs options='nodev,noexec,nosuid' device=tmpfs
+
+# Remove all pre-installed repos
+/bin/rm -f /etc/yum.repos.d/*.repo
+
+echo "/root/sysconfig.sh" >> /etc/rc.d/rc.local
+chmod +x /etc/rc.d/rc.local
+
+/bin/cat > /root/sysconfig.sh <<'SYSCONFIG'
+#!/bin/bash
+# run sysconfig
+if [ ! -e /etc/sysconfig/configured ]; then
+  /usr/bin/python /root/sysconfig.py && touch /etc/sysconfig/configured
+
+  # Reread in network configuration data.
+  if [ -f /etc/sysconfig/network ]; then
+    . /etc/sysconfig/network
+
+    # Reset the hostname.
+    hostname ${HOSTNAME}
+  fi
+
+  systemctl restart network
+fi
+SYSCONFIG
+chmod +x /root/sysconfig.sh
+
+# Fake out configured flag for very first boot
+touch /etc/sysconfig/configured
+
+%end
 
